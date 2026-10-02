@@ -42,7 +42,16 @@ class ProductListSerializer(serializers.ModelSerializer):
 
     def get_primary_image(self, obj):
         img = obj.images.filter(is_primary=True).first() or obj.images.first()
-        return img.image.url if img else None
+        if not img:
+            return None
+        url = img.image.url
+        # Local storage gives a relative "/media/..." path, which a separately
+        # hosted frontend would resolve against ITS OWN domain (404). Make it
+        # absolute so it points back at this backend.
+        request = self.context.get("request")
+        if request and url.startswith("/"):
+            return request.build_absolute_uri(url)
+        return url
 
 
 class ProductDetailSerializer(serializers.ModelSerializer):

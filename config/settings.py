@@ -119,6 +119,22 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
 }
 
+# Render terminates HTTPS at its proxy and forwards plain HTTP to Django, so
+# without this Django builds http:// URLs and browsers block them as mixed
+# content on the https:// site.
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# Product images. Render's free disk is wiped on every redeploy/sleep, so
+# uploaded files vanish. When CLOUDINARY_URL is set (production), uploads go
+# to Cloudinary instead and come back as permanent https:// URLs. Locally
+# (no CLOUDINARY_URL) images keep using the plain ./media folder.
+if env("CLOUDINARY_URL"):
+    INSTALLED_APPS += ["cloudinary_storage", "cloudinary"]
+    STORAGES = {
+        "default": {"BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    }
+
 # CORS: wide open in local dev (DEBUG=True); in production only allow
 # *.onrender.com subdomains (your frontend static site + backend itself),
 # since CORS_ALLOW_ALL_ORIGINS = DEBUG alone would silently block every
