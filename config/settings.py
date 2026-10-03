@@ -144,6 +144,21 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
 ]
 CORS_ALLOW_ALL_ORIGINS = DEBUG
 
+# By default Django only prints crash tracebacks to the console when
+# DEBUG=True — in production (DEBUG=False) it silently swallows them unless
+# explicitly configured like this, which made the image-upload 500 error
+# invisible in Render's logs. This makes every unhandled error visible.
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "root": {"handlers": ["console"], "level": "WARNING"},
+    "loggers": {
+        "django": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "django.request": {"handlers": ["console"], "level": "ERROR", "propagate": False},
+    },
+}
+
 # Redis / Celery (used from Phase 2 onward, wired now so Docker stack is ready)
 REDIS_URL = env("REDIS_URL", "redis://redis:6379/0")
 CELERY_BROKER_URL = REDIS_URL
