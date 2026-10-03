@@ -15,6 +15,7 @@ DEBUG = env("DJANGO_DEBUG", "True") == "True"
 ALLOWED_HOSTS = env("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 
 INSTALLED_APPS = [
+    "jazzmin",  # must come before django.contrib.admin to override its templates
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -143,6 +144,33 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https://.*\.onrender\.com$",
 ]
 CORS_ALLOW_ALL_ORIGINS = DEBUG
+
+# Admin theme (Jazzmin) — the admin itself still has no custom CSS of its
+# own; this is a drop-in package that reskins the built-in Django admin
+# templates, colors loosely matched to the storefront's teal/saffron look.
+JAZZMIN_SETTINGS = {
+    "site_title": "Souk Admin",
+    "site_header": "Souk",
+    "site_brand": "Souk Admin",
+    "welcome_sign": "Welcome to the Souk back office",
+    "copyright": "Souk",
+    "show_sidebar": True,
+    "navigation_expanded": True,
+    "icons": {
+        "catalog.Product": "fas fa-box",
+        "catalog.Category": "fas fa-tags",
+        "catalog.Review": "fas fa-star",
+        "orders.Order": "fas fa-receipt",
+        "cart.Cart": "fas fa-shopping-cart",
+        "accounts.User": "fas fa-user",
+        "accounts.Address": "fas fa-map-marker-alt",
+    },
+}
+JAZZMIN_UI_TWEAKS = {
+    "navbar": "navbar-dark",
+    "accent": "accent-teal",
+    "theme": "flatly",
+}
 
 # By default Django only prints crash tracebacks to the console when
 # DEBUG=True — in production (DEBUG=False) it silently swallows them unless
