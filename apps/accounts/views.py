@@ -1,7 +1,9 @@
 from rest_framework import generics, permissions, viewsets
 from rest_framework.throttling import ScopedRateThrottle
+from rest_framework.response import Response
 from .models import Address
 from .serializers import RegisterSerializer, UserSerializer, AddressSerializer
+from .captcha import verify_turnstile
 
 
 class RegisterView(generics.CreateAPIView):
@@ -12,6 +14,14 @@ class RegisterView(generics.CreateAPIView):
     serializer_class = RegisterSerializer
     throttle_classes = [ScopedRateThrottle]
     throttle_scope = "register"
+
+    def create(self, request, *args, **kwargs):
+        ip = request.META.get("HTTP_X_FORWARDED_FOR", "").split(",")[0].strip() or request.META.get("REMOTE_ADDR")
+        if not verify_turnstile(request.data.get("captcha_token"), ip):
+            return Response(
+                {"detail": "Captcha check failed. Please try again."}, status=400
+            )
+        return super().create(request, *args, **kwargs)
 
 
 class MeView(generics.RetrieveUpdateAPIView):

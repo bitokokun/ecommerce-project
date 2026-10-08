@@ -38,6 +38,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",  # serves admin/Jazzmin CSS+JS in production
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -143,12 +144,19 @@ SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 # uploaded files vanish. When CLOUDINARY_URL is set (production), uploads go
 # to Cloudinary instead and come back as permanent https:// URLs. Locally
 # (no CLOUDINARY_URL) images keep using the plain ./media folder.
+
+# Static files (the admin's CSS/JS/icons). gunicorn doesn't serve these on its
+# own when DEBUG=False, which is why the live admin showed as unstyled plain
+# HTML and why the Jazzmin theme couldn't load either. WhiteNoise serves them
+# straight from STATIC_ROOT (filled by `collectstatic` in start.sh).
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
+}
+
 if env("CLOUDINARY_URL"):
     INSTALLED_APPS += ["cloudinary_storage", "cloudinary"]
-    STORAGES = {
-        "default": {"BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage"},
-        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
-    }
+    STORAGES["default"] = {"BACKEND": "cloudinary_storage.storage.MediaCloudinaryStorage"}
 
 # CORS: wide open in local dev (DEBUG=True); in production only allow
 # *.onrender.com subdomains (your frontend static site + backend itself),
