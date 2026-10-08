@@ -1,11 +1,17 @@
 from rest_framework import generics, permissions, viewsets
+from rest_framework.throttling import ScopedRateThrottle
 from .models import Address
 from .serializers import RegisterSerializer, UserSerializer, AddressSerializer
 
 
 class RegisterView(generics.CreateAPIView):
+    # a script could otherwise spin up unlimited seller accounts to spam
+    # products; this caps new accounts to 5 per hour per IP (see
+    # DEFAULT_THROTTLE_RATES["register"] in settings.py)
     permission_classes = [permissions.AllowAny]
     serializer_class = RegisterSerializer
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "register"
 
 
 class MeView(generics.RetrieveUpdateAPIView):

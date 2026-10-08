@@ -113,6 +113,20 @@ REST_FRAMEWORK = {
     ),
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 20,
+    # Without this, nothing stops a script from hammering /register/ or
+    "DEFAULT_THROTTLE_CLASSES": (
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle",
+        "rest_framework.throttling.ScopedRateThrottle",
+    ),
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "60/min",
+        "user": "180/min",
+        # tighter limits on the specific actions spam would target
+        "register": "5/hour",
+        "product_write": "30/hour",
+        "image_upload": "20/hour",
+    },
 }
 
 SIMPLE_JWT = {

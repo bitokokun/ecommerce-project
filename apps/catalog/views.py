@@ -33,6 +33,15 @@ class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
 
 class ProductViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsSellerOrReadOnly]
+    throttle_scope = "product_write"
+
+    def get_throttles(self):
+        # only rate-limit the write actions; browsing the shop shouldn't be capped this tightly
+        if self.action in ("create", "update", "partial_update"):
+            from rest_framework.throttling import ScopedRateThrottle
+
+            return [ScopedRateThrottle()]
+        return super().get_throttles()
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ["category", "status", "seller"]
     search_fields = ["name", "description"]
@@ -95,6 +104,9 @@ class ProductVariantViewSet(viewsets.ModelViewSet):
         serializer.save(product=product)
 
 
+MAX_IMAGE_BYTES = 5 * 1024 * 1024  # 5 MB — generous for a product photo, small enough to block abuse
+
+
 class ProductImageUploadView(APIView):
     """
     POST a single multipart "image" file to /products/<id>/images/upload/
@@ -103,6 +115,12 @@ class ProductImageUploadView(APIView):
     """
     permission_classes = [permissions.IsAuthenticated]
     parser_classes = [MultiPartParser]
+    throttle_scope = "image_upload"
+
+    def get_throttles(self):
+        from rest_framework.throttling import ScopedRateThrottle
+
+        return [ScopedRateThrottle()]
 
     def post(self, request, product_pk):
         try:
@@ -115,6 +133,26 @@ class ProductImageUploadView(APIView):
         file = request.FILES.get("image")
         if not file:
             return Response({"detail": "No file provided."}, status=status.HTTP_400_BAD_REQUEST)
+
+        if file.size > MAX_IMAGE_BYTES:
+            return Response(
+                {"detail": "Image is larger than 5MB."}, status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Don't trust the filename or the browser-supplied content type — both
+        # are easy to fake (a .exe renamed to photo.jpg still claims
+        # "image/jpeg" if the uploader sets that header themselves). Actually
+        # decoding the file as an image is what proves it really is one.
+        from PIL import Image, UnidentifiedImageError
+
+        try:
+            with Image.open(file) as im:
+                im.verify()
+        except (UnidentifiedImageError, OSError):
+            return Response(
+                {"detail": "That file isn't a valid image."}, status=status.HTTP_400_BAD_REQUEST
+            )
+        file.seek(0)  # Image.verify() consumes the file; rewind before saving it for real
 
         is_first = not product.images.exists()
         img = ProductImage.objects.create(product=product, image=file, is_primary=is_first)
