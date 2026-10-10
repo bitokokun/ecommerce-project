@@ -1,10 +1,13 @@
 from django.db import transaction
+from django.db.models import Prefetch
+from django.utils.dateparse import parse_datetime
+from django.utils import timezone
 from django.shortcuts import get_object_or_404
-from rest_framework import permissions, status, viewsets
+from rest_framework import generics, permissions, status, viewsets
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from .models import Order, OrderItem
-from .serializers import OrderSerializer, CheckoutSerializer
+from .serializers import OrderSerializer, CheckoutSerializer, SaleOrderSerializer
 from apps.accounts.models import Address
 from apps.cart.views import get_or_create_cart
 from apps.catalog.models import ProductVariant
@@ -68,3 +71,50 @@ class CheckoutView(APIView):
             cart.items.all().delete()
 
         return Response(OrderSerializer(order).data, status=status.HTTP_201_CREATED)
+
+
+def _orders_for_seller(user):
+    """Orders that contain at least one product this user sells."""
+    return Order.objects.filter(items__variant__product__seller=user).distinct()
+
+
+class ReceivedOrdersView(generics.ListAPIView):
+    """
+    GET /api/orders/received/ - orders other people placed for MY products,
+    newest first. This is the seller's "someone bought your stuff" list.
+    """
+    serializer_class = SaleOrderSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        mine = OrderItem.objects.filter(variant__product__seller=user)
+        return (
+            _orders_for_seller(user)
+            .select_related("shipping_address")
+            .prefetch_related(Prefetch("items", queryset=mine, to_attr="seller_items"))
+            .order_by("-created_at")
+        )
+
+
+class ReceivedOrdersCountView(APIView):
+    """
+    GET /api/orders/received/count/?since=<ISO time> - how many orders arrived
+    after that moment. Powers the little number on the "Sell" link. Cheap on
+    purpose: it runs whenever a seller changes page.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        qs = _orders_for_seller(request.user)
+        raw = request.query_params.get("since", "")
+        if raw:
+            try:
+                since = parse_datetime(raw)
+            except ValueError:
+                since = None
+            if since:
+                if timezone.is_naive(since):
+                    since = timezone.make_aware(since)
+                qs = qs.filter(created_at__gt=since)
+        return Response({"count": qs.count()})

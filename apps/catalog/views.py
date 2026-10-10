@@ -25,15 +25,36 @@ class IsSellerOrReadOnly(permissions.BasePermission):
         return obj.seller_id == request.user.id or request.user.is_staff
 
 
+class IsSellerAccount(permissions.BasePermission):
+    """
+    Only seller accounts (or staff) may create products. IsSellerOrReadOnly
+    above only guards EXISTING products, so before this any logged-in
+    customer could create one by calling the API directly.
+    """
+    message = "Only seller accounts can list products."
+
+    def has_permission(self, request, view):
+        u = request.user
+        return bool(u and u.is_authenticated and (u.role == "seller" or u.is_staff))
+
+
 class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     permission_classes = [permissions.AllowAny]
+    # The list is short and the dropdowns/filter chips need ALL of it. With the
+    # default 20-per-page paging, anything past the 20th category would vanish.
+    pagination_class = None
 
 
 class ProductViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticatedOrReadOnly, IsSellerOrReadOnly]
     throttle_scope = "product_write"
+
+    def get_permissions(self):
+        if self.action == "create":
+            return [IsSellerAccount()]
+        return super().get_permissions()
 
     def get_throttles(self):
         # only rate-limit the write actions; browsing the shop shouldn't be capped this tightly

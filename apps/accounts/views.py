@@ -1,9 +1,11 @@
 from rest_framework import generics, permissions, viewsets
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.response import Response
+from rest_framework.views import APIView
 from .models import Address
 from .serializers import RegisterSerializer, UserSerializer, AddressSerializer
 from .captcha import verify_turnstile
+from .countries import COUNTRIES
 
 
 class RegisterView(generics.CreateAPIView):
@@ -41,3 +43,11 @@ class AddressViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
+
+
+class CountryListView(APIView):
+    """The countries shown in the address dropdown."""
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        return Response(COUNTRIES)
