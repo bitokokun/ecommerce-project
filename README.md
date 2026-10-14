@@ -17,6 +17,10 @@ sellers list and manage their own products. Django REST API + React storefront, 
 - Checkout with a saved shipping address (country chosen from a list of 196)
 - Order history
 
+**Recommendations**
+- "You might also like" on every product page, and "Picked for you" on the home page for shoppers with a purchase or a cart
+- Every suggestion says why ("Because you bought Wireless Mouse", "Often bought together")
+
 **Sellers**
 - Register as a seller, then manage listings from a dashboard (no Django admin needed)
 - Create products, add variants and stock, upload photos
@@ -42,6 +46,16 @@ sellers list and manage their own products. Django REST API + React storefront, 
 React storefront  ──HTTPS/JSON──▶  Django REST API  ──▶  PostgreSQL
  (Render static)                    (Docker on Render)  └─▶ Cloudinary (images)
 ```
+
+## How the recommendations work
+
+Written from scratch in plain Python (`apps/recommendations/engine.py`), with no ML library, because the catalog is small and the host has 512 MB of RAM.
+
+- **Content similarity.** Each product's name, category and description become a TF-IDF vector; products are compared by cosine similarity. Rare words count for more than common ones. This works with zero sales data.
+- **Co-purchase.** Item-item collaborative filtering: how often two products appear in the same order, normalised by how popular each one is. It contributes nothing until orders exist, then improves the results.
+- **Blend.** `0.7 * content + 0.3 * co-purchase`. Weak matches are dropped rather than padded out.
+- **For a shopper.** Each candidate is scored against what they bought (full weight) and what is in their cart (half weight); items they already have are never suggested.
+- The model is cached for 5 minutes. The engine has no Django code in it, and its 19 unit tests run in milliseconds: `python manage.py test apps.recommendations`.
 
 ## Design decisions worth knowing
 
@@ -72,6 +86,8 @@ React storefront  ──HTTPS/JSON──▶  Django REST API  ──▶  Postgre
 | POST | `/api/orders/checkout/` | Turn the cart into an order |
 | GET | `/api/orders/` | Own order history |
 | GET | `/api/orders/received/` | Orders containing the seller's products |
+| GET | `/api/recommendations/similar/{id}/` | Products related to one product |
+| GET | `/api/recommendations/for-you/` | Personal picks from purchases and cart |
 
 ## Run it locally
 
@@ -93,10 +109,12 @@ The React app is in the [frontend repo](https://github.com/bitokokun/ecommerce-f
 | `CLOUDINARY_URL` | Image storage (optional locally; uploads use local disk without it) |
 | `TURNSTILE_SECRET_KEY` | Captcha check (optional; skipped when unset) |
 | `DJANGO_SUPERUSER_USERNAME` / `EMAIL` / `PASSWORD` | Auto-creates the admin on deploy |
+| `SEED_DEMO` | Set to `1` to fill the shop with demo products on every deploy (`python manage.py seed_demo`, skips ones that exist) |
 
 ## Not built yet
 
 - Payment gateway (checkout currently creates a pending order)
 - Moderation step before a seller's product goes live
 - Email notifications (alerts are in-app only)
-- Automated tests
+- Automated tests beyond the recommendation engine
+- A separate service for the recommender (it is a clean module today, so it could be split out)
