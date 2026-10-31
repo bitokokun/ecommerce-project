@@ -57,6 +57,28 @@ DEMO = [
 ]
 
 
+# Products that come in several colors / sizes: name -> [({options}, stock), ...]
+# A stock of 0 is deliberate, so you can see how a sold-out option looks.
+VARIANTS = {
+    "Running Shoes": [
+        ({"color": "Black", "size": "41"}, 8),
+        ({"color": "Black", "size": "42"}, 12),
+        ({"color": "Black", "size": "43"}, 6),
+        ({"color": "Red", "size": "42"}, 5),
+        ({"color": "Red", "size": "43"}, 0),
+        ({"color": "White", "size": "42"}, 9),
+    ],
+    "Cotton T-Shirt": [
+        ({"color": "White", "size": "S"}, 20),
+        ({"color": "White", "size": "M"}, 25),
+        ({"color": "White", "size": "L"}, 15),
+        ({"color": "Navy", "size": "M"}, 18),
+        ({"color": "Navy", "size": "L"}, 0),
+        ({"color": "Olive", "size": "M"}, 12),
+    ],
+}
+
+
 class Command(BaseCommand):
     help = "Create a demo catalog (skips products that already exist)."
 
@@ -83,4 +105,29 @@ class Command(BaseCommand):
             )
             created += 1
 
+        self._add_variants()
         self.stdout.write(f"Demo catalog ready ({created} new products).")
+
+    def _add_variants(self):
+        """Give the shoes and t-shirts their colors and sizes. Safe to repeat."""
+        for name, rows in VARIANTS.items():
+            product = Product.objects.filter(name__iexact=name).first()
+            if product is None:
+                continue
+            base = slugify(name).upper()
+            # the plain single version created earlier becomes the first color/size
+            plain = ProductVariant.objects.filter(product=product, sku=f"{base}-01").first()
+            if plain is not None and plain.attributes:
+                plain = None  # already has options, leave it alone
+            for options, stock in rows:
+                sku = "-".join([base] + [slugify(str(v)).upper() for v in options.values()])
+                if ProductVariant.objects.filter(sku=sku).exists():
+                    continue
+                if plain is not None:
+                    plain.sku, plain.attributes, plain.stock = sku, options, stock
+                    plain.save()
+                    plain = None
+                else:
+                    ProductVariant.objects.create(
+                        product=product, sku=sku, attributes=options, stock=stock
+                    )
