@@ -10,9 +10,21 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 def env(key, default=None):
     return os.environ.get(key, default)
 
-SECRET_KEY = env("DJANGO_SECRET_KEY", "dev-secret-key-change-me")
-DEBUG = env("DJANGO_DEBUG", "True") == "True"
-ALLOWED_HOSTS = env("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+SECRET_KEY = env("DJANGO_SECRET_KEY")
+
+DEBUG = env("DJANGO_DEBUG", "False").lower() == "true"
+
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in env(
+        "DJANGO_ALLOWED_HOSTS",
+        "localhost,127.0.0.1"
+    ).split(",")
+    if host.strip()
+]
+
+if not SECRET_KEY:
+    raise ValueError("DJANGO_SECRET_KEY must be configured")
 
 INSTALLED_APPS = [
     "jazzmin",  # must come before django.contrib.admin to override its templates
@@ -74,7 +86,7 @@ DATABASES = {
         "ENGINE": "django.db.backends.postgresql",
         "NAME": env("POSTGRES_DB", "ecommerce"),
         "USER": env("POSTGRES_USER", "ecommerce"),
-        "PASSWORD": env("POSTGRES_PASSWORD", "ecommerce"),
+        "PASSWORD": env("POSTGRES_PASSWORD"),
         "HOST": env("POSTGRES_HOST", "db"),
         "PORT": env("POSTGRES_PORT", "5432"),
     }
