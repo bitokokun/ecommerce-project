@@ -59,6 +59,7 @@ DEMO = [
 
 # Products that come in several colors / sizes: name -> [({options}, stock), ...]
 # A stock of 0 is deliberate, so you can see how a sold-out option looks.
+# The T-shirt has deliberate gaps too, to show "this combination isn't available".
 VARIANTS = {
     "Running Shoes": [
         ({"color": "Black", "size": "41"}, 8),
@@ -67,6 +68,9 @@ VARIANTS = {
         ({"color": "Red", "size": "42"}, 5),
         ({"color": "Red", "size": "43"}, 0),
         ({"color": "White", "size": "42"}, 9),
+        ({"color": "Red", "size": "41"}, 4),
+        ({"color": "White", "size": "41"}, 7),
+        ({"color": "White", "size": "43"}, 3),
     ],
     "Cotton T-Shirt": [
         ({"color": "White", "size": "S"}, 20),
