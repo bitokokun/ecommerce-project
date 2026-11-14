@@ -4,8 +4,9 @@ A full-stack marketplace in the style of Amazon / Digikala: shoppers browse and 
 sellers list and manage their own products. Django REST API + React storefront, deployed live.
 
 **Live demo:** https://ecommerce-frontend-7q36.onrender.com
-<img width="1280" height="719" alt="shop" src="https://github.com/user-attachments/assets/bf70413b-582f-42a0-a247-847c2fd2ba05" />
-<img width="1280" height="719" alt="products" src="https://github.com/user-attachments/assets/eebde3a7-6fe5-4ab0-9712-4fe82e49e602" />
+<img width="2559" height="1439" alt="shop" src="https://github.com/user-attachments/assets/b035fb33-427e-4514-8311-aa04952a6024" />
+<img width="2559" height="1439" alt="products" src="https://github.com/user-attachments/assets/2bbeb4ac-dbf6-438b-bde2-bd43d0717049" />
+
 
 
 **API:** https://ecommerce-backend-quog.onrender.com/api/catalog/products/
